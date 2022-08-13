@@ -1,37 +1,35 @@
 import { Injectable } from '@nestjs/common';
-import { Sequelize } from 'sequelize-typescript';
+import { InjectModel } from '@nestjs/sequelize';
 import Livro from './livro.model';
 
 @Injectable()
 export default class LivroService {
-    
-    private livrosDB: Livro[] = [];
 
-    obterTodos(): Livro[]{
-        return this.livrosDB.filter( livro => !!livro);
+    constructor(@InjectModel(Livro) private readonly livroModel: typeof Livro){}
+
+    async obterTodos(): Promise<Livro[]>{
+        return this.livroModel.findAll();
     };
 
-    obterLivroEspecifico(id: number): Livro {
-        if(!!this.livrosDB[id]) return this.livrosDB[id];
-        return null;
+    async obterLivroEspecifico(id: number): Promise<Livro> {
+        return this.livroModel.findByPk(id);
     }
 
-    criarLivro(livro: Livro): Livro {
-        const id = this.livrosDB.push(livro)-1;
-        return this.livrosDB[id]; 
+    async criarLivro(livro: Livro): Promise<Livro> {
+        return this.livroModel.create(livro);
     }
 
-    atualizarLivro(livro, id: number): Livro{
-        if(!!this.livrosDB[id]) {
-            this.livrosDB[id] = livro;
-            return this.livrosDB[id];
-        }
-        return null;
+    async atualizarLivro(livro, id: number): Promise<Livro> {
+        return this.livroModel.update(livro, {
+            where: {
+                id: id
+            }
+        }).then((result) => {if(result[0] > 0) return this.obterLivroEspecifico(id); return null; });
     }
 
-    apagarLivro(id: number): Livro {
-        const livro = this.livrosDB[id];
-        this.livrosDB[id] = null;
+    async apagarLivro(id: number): Promise<Livro> {
+        const livro = await this.obterLivroEspecifico(id);
+        livro.destroy();
         return livro;
     }
 }
